@@ -42,7 +42,7 @@ impl BloomFilter {
         (1..self.k).map(|i| {
             let mut s = DefaultHasher::new();
             item.hash(&mut s);
-            (s.finish() + i) % self.m
+            (s.finish() + i + self.hash_seed as u64) % self.m
         }).collect()
     }
 
