@@ -39,10 +39,10 @@ impl BloomFilter {
     }
 
     fn get_hashes<T: Hash>(&self, item: &T) -> Vec<u64> {
-        (1..self.k).map(|_| {
+        (1..self.k).map(|i| {
             let mut s = DefaultHasher::new();
             item.hash(&mut s);
-            s.finish()
+            (s.finish() + i) % self.m
         }).collect()
     }
 
@@ -50,7 +50,7 @@ impl BloomFilter {
         let hashes = self.get_hashes(&item);
         BloomFilter {
             bitset: hashes.iter().fold(self.bitset, |mut curr, &hash| {
-                curr.insert((hash % self.m) as usize);
+                curr.insert(hash as usize);
                 curr
             }),
             ..self
