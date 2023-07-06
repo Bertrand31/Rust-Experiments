@@ -4,7 +4,7 @@ use std::hash::Hasher;
 use std::collections::hash_map::DefaultHasher;
 
 #[derive(PartialEq, Debug)]
-struct BloomFilter {
+pub struct BloomFilter {
     n: u32,
     p: f32,
     bitset: FixedBitSet,
@@ -41,15 +41,11 @@ impl BloomFilter {
         }).collect()
     }
 
-    pub fn insert<T: Hash>(self, item: T) -> Self {
-        let hashes = self.get_hashes(&item);
-        BloomFilter {
-            bitset: hashes.iter().fold(self.bitset.clone(), |mut curr, &hash| {
-                curr.insert(hash as usize);
-                curr
-            }),
-            ..self
+    pub fn insert<T: Hash>(mut self, item: T) -> Self {
+        for &hash in self.get_hashes(&item).iter() {
+            self.bitset.insert(hash as usize)
         }
+        self
     }
 
     pub fn member<T: Hash>(&self, item: T) -> bool {
@@ -62,13 +58,4 @@ impl BloomFilter {
         self.bitset.clear();
         self
     }
-}
-
-fn main() {
-    let bf = BloomFilter::new(100000, 0.0001);
-    let bf2 = bf.insert("kek");
-    assert!(bf2.member("kek"));
-    assert!(!bf2.member("pepe"));
-    let bf3 = bf2.clear();
-    assert!(!bf3.member("kek"));
 }
