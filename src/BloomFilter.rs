@@ -1,7 +1,4 @@
 use fixedbitset::FixedBitSet;
-use rand::SeedableRng;
-use rand::rngs::SmallRng;
-use rand::RngCore;
 use std::hash::Hash;
 use std::hash::Hasher;
 use std::collections::hash_map::DefaultHasher;
@@ -12,8 +9,7 @@ struct BloomFilter {
     p: f32,
     bitset: FixedBitSet,
     m: u64,
-    k: u64,
-    hash_seed: u32
+    k: u64
 }
 
 impl BloomFilter {
@@ -26,15 +22,14 @@ impl BloomFilter {
         (m / n as u64) * 2_u8.ilog2() as u64
     }
 
-    pub fn new(n: u32, p: f32, mut rand_gen: SmallRng) -> Self {
+    pub fn new(n: u32, p: f32) -> Self {
         let m = Self::get_max_size(n, p);
         BloomFilter {
             n: n,
             p: p,
             bitset: FixedBitSet::with_capacity(m as usize),
             m: m,
-            k: Self::get_number_of_hash_fns(n, m),
-            hash_seed: rand_gen.next_u32()
+            k: Self::get_number_of_hash_fns(n, m)
         }
     }
 
@@ -42,14 +37,14 @@ impl BloomFilter {
         (1..self.k).map(|i| {
             let mut s = DefaultHasher::new();
             item.hash(&mut s);
-            (s.finish() + i + self.hash_seed as u64) % self.m
+            (s.finish() + i) % self.m
         }).collect()
     }
 
     pub fn insert<T: Hash>(self, item: T) -> Self {
         let hashes = self.get_hashes(&item);
         BloomFilter {
-            bitset: hashes.iter().fold(self.bitset, |mut curr, &hash| {
+            bitset: hashes.iter().fold(self.bitset.clone(), |mut curr, &hash| {
                 curr.insert(hash as usize);
                 curr
             }),
@@ -62,11 +57,18 @@ impl BloomFilter {
             .iter()
             .all(|&hash| self.bitset.contains(hash as usize))
     }
+
+    pub fn clear(mut self) -> Self {
+        self.bitset.clear();
+        self
+    }
 }
 
 fn main() {
-    let bf = BloomFilter::new(100000, 0.0001, SmallRng::from_entropy());
+    let bf = BloomFilter::new(100000, 0.0001);
     let bf2 = bf.insert("kek");
-    println!("{}", bf2.member("kek"));
-    println!("{}", bf2.member("pepe"));
+    assert!(bf2.member("kek"));
+    assert!(!bf2.member("pepe"));
+    let bf3 = bf2.clear();
+    assert!(!bf3.member("kek"));
 }
